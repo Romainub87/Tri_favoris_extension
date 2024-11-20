@@ -3,6 +3,8 @@
 // API key pour OpenAI (à remplacer par la vôtre)
 const GEMINI_API_KEY = 'AIzaSyAtMWTEmx-0njal9rbautS0NKHh9j_hgaQ';
 
+let dossIds = [];
+
 // Fonction pour obtenir les favoris et envoyer à Gemini
 function sortBookmarksWithGemini() {
     // Obtenez tous les favoris
@@ -17,7 +19,7 @@ function sortBookmarksWithGemini() {
         // Construction du contenu à envoyer à Gemini
         let contents = [{
             "parts": [{
-                "text": `Voici une liste de favoris (avec le titre et l'URL) :\n${formattedBookmarks}\n\nTrie-les en fonction de leur thème et renvoie-moi un json avec les favoris regroupés dans des catégories claires.`
+                "text": `Voici une liste de favoris (avec le titre et l'URL) :\n${formattedBookmarks}\n\nTrie-les en fonction de leur thème et renvoie-moi un json avec les favoris regroupés dans des catégories claires et précises.`
             }]
         }];
 
@@ -33,55 +35,47 @@ function sortBookmarksWithGemini() {
         })
             .then(response => response.json())
             .then(data => {
-                // Extraire le texte généré par Gemini
-                console.log(data);
-
                 const sortedCategories = JSON.parse(data.candidates[0].content.parts[0].text.trim().split("json")[1].trim().split("`")[0].trim());
-
                 // Analyser la réponse et organiser les favoris dans les bons dossiers
                 moveBookmarksToCategories(sortedCategories, bookmarks);
             })
             .catch(error => {
                 console.error(error);
-                alert("Une erreur est survenue lors de l'appel à l'API Gemini.");
             });
     });
 }
-
-// Exemple de la façon dont vous utiliseriez cette fonction dans le reste du code
 function moveBookmarksToCategories(sortedCategories, bookmarks) {
     let themeFolderIds = {};
 
-    // Pour chaque catégorie, on crée un dossier si nécessaire et on déplace les favoris
+    // For each category, create a folder if necessary and move the bookmarks
     Object.keys(sortedCategories).forEach(categoryName => {
         const bookmarksList = sortedCategories[categoryName];
 
-        // Créer un dossier pour chaque catégorie si nécessaire
+        // Create a folder for each category if necessary
         chrome.bookmarks.search({ title: categoryName }, (results) => {
             let folderId;
             if (results.length > 0) {
                 folderId = results[0].id;
             } else {
-                chrome.bookmarks.create({ title: categoryName }, (newFolder) => {
+                chrome.bookmarks.create({ parentId: folderId, title: categoryName }, (newFolder) => {
                     folderId = newFolder.id;
                     moveBookmarksToFolder(bookmarksList, folderId, bookmarks);
                 });
-                return;  // On sort de cette fonction pour attendre la création du dossier
+                return;  // Exit this function to wait for the folder creation
             }
 
-            // Déplacer les favoris dans le dossier
+            // Move the bookmarks into the folder
             moveBookmarksToFolder(bookmarksList, folderId, bookmarks);
         });
     });
 }
 
-// Fonction pour déplacer les favoris dans un dossier donné
 function moveBookmarksToFolder(bookmarksList, folderId, bookmarks) {
     bookmarksList.forEach(bookmark => {
         let matchingBookmark = bookmarks.find(b => b.url === bookmark.url);
         if (matchingBookmark) {
             chrome.bookmarks.move(matchingBookmark.id, { parentId: folderId }, () => {
-                console.log(`Favori déplacé vers le dossier ${folderId}`);
+                console.log(`Bookmark moved to folder ${folderId}`);
             });
         } else {
             chrome.bookmarks.create({
@@ -89,12 +83,12 @@ function moveBookmarksToFolder(bookmarksList, folderId, bookmarks) {
                 title: bookmark.title,
                 url: bookmark.url
             }, (newBookmark) => {
-                console.log(`Favori ajouté au dossier ${folderId} : ${newBookmark.title}`);
+                console.log(`Bookmark added to folder ${folderId}: ${newBookmark.title}`);
             });
         }
     });
+    dossIds.push(folderId);
 }
-
 
 // Fonction utilitaire pour aplatir les favoris
 function flattenBookmarks(bookmarkNodes) {
@@ -115,6 +109,71 @@ function flattenBookmarks(bookmarkNodes) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'sortBookmarksWithGemini') {
         sortBookmarksWithGemini();
+        // Example call to the function
+        cleanupBookmarksBar();
         sendResponse({ status: 'success', message: 'Favoris triés par Gemini' });
+    } else if (message.action === 'extractAndDeleteFolders') {
+        extractAndDeleteFolders();
+        sendResponse({ status: 'success', message: 'Dossiers extraits et supprimés' });
     }
 });
+
+// Fonction pour extraire tous les favoris des dossiers et supprimer les dossiers
+function extractAndDeleteFolders() {
+    chrome.bookmarks.getTree((bookmarkTreeNodes) => {
+        let bookmarks = flattenBookmarks(bookmarkTreeNodes);
+
+        // Parcourir tous les dossiers et extraire les favoris
+        bookmarkTreeNodes.forEach(node => {
+            if (node.children) {
+                extractBookmarksFromFolder(node);
+            }
+        });
+    });
+}
+
+// Fonction pour extraire les favoris d'un dossier et supprimer le dossier
+function extractBookmarksFromFolder(folderNode) {
+    if (folderNode.children) {
+        folderNode.children.forEach(childNode => {
+            if (childNode.url) {
+                // Déplacer le favori à la racine
+                chrome.bookmarks.move(childNode.id, { parentId: '1' }, () => {
+                    console.log(`Favori déplacé à la racine : ${childNode.title}`);
+                });
+            } else if (childNode.children) {
+                // Appel récursif pour les sous-dossiers
+                extractBookmarksFromFolder(childNode);
+            }
+        });
+
+        // Supprimer le dossier une fois les favoris extraits
+        chrome.bookmarks.removeTree(folderNode.id, () => {
+            console.log(`Dossier supprimé : ${folderNode.title}`);
+        });
+    }
+}
+
+// Function to clean up the bookmarks bar by removing individual bookmarks
+function cleanupBookmarksBar() {
+    chrome.bookmarks.getChildren('1', (bookmarkNodes) => {
+        bookmarkNodes.forEach(node => {
+            if (node.url) {
+                chrome.bookmarks.remove(node.id, () => {
+                    console.log(`Bookmark removed: ${node.title}`);
+                });
+            }
+        });
+    });
+
+    console.log(dossIds);
+
+    // remplir la barre de favoris avec des favoris qui ont pour parentId pa 1
+   dossIds.forEach(dossId => {
+        chrome.bookmarks.move(dossId, { parentId: '1' }, () => {
+            console.log(`Dossier déplacé à la racine : ${dossId}`);
+        });
+    });
+}
+
+
