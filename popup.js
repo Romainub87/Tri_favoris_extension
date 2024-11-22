@@ -1,27 +1,18 @@
 document.getElementById('sortBookmarks').addEventListener('click', () => {
-    // Envoie un message au background.js pour trier les favoris
+    const messageElement = document.getElementById('message');
+    messageElement.textContent = ''; // Clear previous messages
+    messageElement.innerHTML = '<div class="loader"></div>'; // Show loader
     chrome.runtime.sendMessage({
         action: 'sortBookmarksWithGemini'
     }, (response) => {
-        // Affiche un message de confirmation ou d'erreur en fonction de la réponse
+        console.log(response);
+        messageElement.innerHTML = ''; // Clear loader
         if (response.status === 'success') {
-            console.log('Les favoris ont été triés avec succès par Gemini.');
+            messageElement.textContent = 'Les favoris ont été triés avec succès par Gemini.';
+        } else if (response.status === 'noBookmarksFound') {
+            messageElement.textContent = 'Aucun favori trouvé.';
         } else {
-            console.log('Une erreur est survenue lors du tri des favoris.');
-        }
-    });
-});
-
-document.getElementById('extractAndDeleteFolders').addEventListener('click', () => {
-    // Envoie un message au background.js pour extraire et supprimer les dossiers
-    chrome.runtime.sendMessage({
-        action: 'extractAndDeleteFolders'
-    }, (response) => {
-        // Affiche un message de confirmation ou d'erreur en fonction de la réponse
-        if (response.status === 'success') {
-            console.log('Les dossiers ont été extraits et supprimés avec succès.');
-        } else {
-            console.log('Une erreur est survenue lors de l\'extraction et de la suppression des dossiers.');
+            messageElement.textContent = 'Une erreur est survenue lors du tri des favoris.';
         }
     });
 });
