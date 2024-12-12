@@ -79,7 +79,7 @@ function moveBookmarksToCategories(sortedCategories, bookmarks) {
                     folderId = newFolder.id;
                     moveBookmarksToFolder(bookmarksList, folderId, bookmarks);
                 });
-                return;  // Quitter cette fonction pour attendre la création du dossier
+                return;
             }
             // Déplacer les favoris dans le dossier
             moveBookmarksToFolder(bookmarksList, folderId, bookmarks);

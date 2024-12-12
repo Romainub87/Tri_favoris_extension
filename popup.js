@@ -1,12 +1,11 @@
 document.getElementById('sortBookmarks').addEventListener('click', () => {
     const messageElement = document.getElementById('message');
-    messageElement.textContent = ''; // Clear previous messages
-    messageElement.innerHTML = '<div class="loader"></div>'; // Show loader
+    messageElement.textContent = '';
+    messageElement.innerHTML = '<div class="loader"></div>';
     chrome.runtime.sendMessage({
         action: 'sortBookmarksWithGemini'
     }, (response) => {
-        console.log(response);
-        messageElement.innerHTML = ''; // Clear loader
+        messageElement.innerHTML = '';
         if (response.status === 'success') {
             messageElement.textContent = 'Les favoris ont été triés avec succès par Gemini.';
         } else if (response.status === 'noBookmarksFound') {
