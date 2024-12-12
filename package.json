@@ -9,5 +9,8 @@
   "private": true,
   "devDependencies": {
     "@google/generative-ai": "^0.21.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
   }
 }

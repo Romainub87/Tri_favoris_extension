@@ -6,7 +6,7 @@ body {
 
 h3 {
     text-align: center;
-    color: #333;
+    color: white;
     margin-bottom: 20px;
 }
 
@@ -38,4 +38,8 @@ button:hover {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+p {
+    color: white;
 }

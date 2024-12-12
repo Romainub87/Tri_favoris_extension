@@ -1,5 +1,6 @@
+
 // API key pour OpenAI (à remplacer par la vôtre)
-const GEMINI_API_KEY = 'AIzaSyAtMWTEmx-0njal9rbautS0NKHh9j_hgaQ';
+const GEMINI_API_KEY = 'votre clé gemini';
 
 let dossIds = [];
 
