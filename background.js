@@ -1,5 +1,6 @@
+
 // API key pour OpenAI (à remplacer par la vôtre)
-const GEMINI_API_KEY = 'AIzaSyAtMWTEmx-0njal9rbautS0NKHh9j_hgaQ';
+const GEMINI_API_KEY = 'votre clé gemini';
 
 let dossIds = [];
 
@@ -76,7 +77,7 @@ async function moveBookmarksToCategories(sortedCategories, bookmarks) {
                     folderId = newFolder.id;
                     moveBookmarksToFolder(bookmarksList, folderId, bookmarks);
                 });
-                return;  // Quitter cette fonction pour attendre la création du dossier
+                return;
             }
             // Déplacer les favoris dans le dossier
             moveBookmarksToFolder(bookmarksList, folderId, bookmarks);
