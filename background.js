@@ -4,11 +4,10 @@ const GEMINI_API_KEY = 'AIzaSyAtMWTEmx-0njal9rbautS0NKHh9j_hgaQ';
 let dossIds = [];
 
 // Fonction pour obtenir les favoris et envoyer à Gemini
-function sortBookmarksWithGemini() {
+async function sortBookmarksWithGemini() {
     // Obtenez tous les favoris
     chrome.bookmarks.getTree((bookmarkTreeNodes) => {
         let bookmarks = flattenBookmarks(bookmarkTreeNodes);
-        console.log(bookmarkTreeNodes);
 
         // Formater les favoris en texte pour envoyer à Gemini
         let formattedBookmarks = bookmarks.map(bookmark => {
@@ -62,7 +61,7 @@ function sortBookmarksWithGemini() {
     });
 }
 
-function moveBookmarksToCategories(sortedCategories, bookmarks) {
+async function moveBookmarksToCategories(sortedCategories, bookmarks) {
     // Pour chaque catégorie, créer un dossier si nécessaire et déplacer les favoris
     Object.keys(sortedCategories).forEach(categoryName => {
         const bookmarksList = sortedCategories[categoryName];
@@ -70,7 +69,6 @@ function moveBookmarksToCategories(sortedCategories, bookmarks) {
         // Créer un dossier pour chaque catégorie si nécessaire
         chrome.bookmarks.search({ title: categoryName }, (results) => {
             let folderId;
-            console.log(results);
             if (results.length > 0) {
                 folderId = results[0].id;
             } else {
@@ -84,24 +82,18 @@ function moveBookmarksToCategories(sortedCategories, bookmarks) {
             moveBookmarksToFolder(bookmarksList, folderId, bookmarks);
         });
     });
-
-
 }
 
 function moveBookmarksToFolder(bookmarksList, folderId, bookmarks) {
     bookmarksList.forEach(bookmark => {
         let matchingBookmark = bookmarks.find(b => b.url === bookmark.url);
         if (matchingBookmark) {
-            chrome.bookmarks.move(matchingBookmark.id, { parentId: folderId }, () => {
-                console.log(`Bookmark moved to folder ${folderId}`);
-            });
+            chrome.bookmarks.move(matchingBookmark.id, { parentId: folderId });
         } else {
             chrome.bookmarks.create({
                 parentId: folderId,
                 title: bookmark.title,
                 url: bookmark.url
-            }, (newBookmark) => {
-                console.log(`Bookmark added to folder ${folderId}: ${newBookmark.title}`);
             });
         }
     });
@@ -132,12 +124,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'sortBookmarksWithGemini') {
         chrome.bookmarks.getTree((bookmarkTreeNodes) => {
             let bookmarks = flattenBookmarks(bookmarkTreeNodes);
-            console.log(bookmarks.length);
             if (bookmarks.length === 0) {
                 sendResponse({ status: 'noBookmarksFound', message: 'Aucun favori trouvé.' });
             } else {
-                sortBookmarksWithGemini();
-                sendResponse({ status: 'success', message: 'Favoris triés par Gemini' });
+                sortBookmarksWithGemini().then(() => {
+                    sendResponse({ status: 'success', message: 'Favoris triés par Gemini' });
+                });
             }
         });
         return true;
